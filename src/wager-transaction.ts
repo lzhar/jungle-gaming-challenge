@@ -1,8 +1,8 @@
-import { newId } from '../shared-ids';
-import { InvalidTransactionStateError, ValidationError } from './errors';
-import type { FailureCode } from './failure-code';
+import { newId } from './shared-ids';
+import { InvalidTransactionStateError, ValidationError } from './domain/errors';
+import type { FailureCode } from './domain/failure-code';
 import { LedgerDirection } from './ledger-entry';
-import { Money } from './money';
+import { Money } from './domain/money';
 
 export enum WagerTransactionKind {
   Opening = 'OPENING', Bet = 'BET', Win = 'WIN', Loss = 'LOSS', Refund = 'REFUND', Rollback = 'ROLLBACK',

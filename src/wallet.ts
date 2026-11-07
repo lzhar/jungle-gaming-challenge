@@ -1,7 +1,7 @@
-import { newId } from '../shared-ids';
-import { CurrencyMismatchError, InsufficientFundsError, ValidationError } from './errors';
+import { newId } from './shared-ids';
+import { CurrencyMismatchError, InsufficientFundsError, ValidationError } from './domain/errors';
 import { LedgerDirection, WalletLedgerEntry } from './ledger-entry';
-import { Money } from './money';
+import { Money } from './domain/money';
 
 export interface WalletState {
   id: string; playerId: string; currency: string; balance: Money;
