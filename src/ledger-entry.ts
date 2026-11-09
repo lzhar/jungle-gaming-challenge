@@ -1,5 +1,5 @@
-import { DomainError } from './errors';
-import { Money } from './money';
+import { DomainError } from './domain/errors';
+import { Money } from './domain/money';
 
 export enum LedgerDirection { Debit = 'DEBIT', Credit = 'CREDIT' }
 

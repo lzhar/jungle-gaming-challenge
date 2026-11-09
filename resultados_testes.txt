@@ -1,0 +1,256 @@
+RESULTADOS DOS TESTES - Distributed Wagering Processor
+======================================================================
+Data    : 2026-11-07 15:23:59
+API     : http://localhost:3000
+Execucao: RUN=1794075810 (sufixo dos ids externos)
+Pasta   : /home/luizhenrique/Documentos/progm/jungle-wagering
+
+[PASS] T05a - Health live
+    Esperado: 200 {"status":"ok"}
+    Obtido  : 200 {"status":"ok"}
+
+[PASS] T05b - Health ready (Postgres e SQS)
+    Esperado: 200 {"status":"ready"}
+    Obtido  : 200 {"status":"ready"}
+
+[PASS] T06 - Criar wallet A com 100,00
+    Esperado: HTTP 201; saldo 100.00; version 1
+    Obtido  : HTTP 201; saldo 100.00; version 1
+
+[PASS] T06-banco - Saldo e versao no banco
+    Esperado: 100.00|1
+    Obtido  : 100.00|1
+
+[PASS] T06-ledger - Lancamento de abertura no ledger
+    Esperado: CREDIT|100.00|0.00|100.00
+    Obtido  : CREDIT|100.00|0.00|100.00
+
+[PASS] T07 - Wallet duplicada (mesmo jogador e moeda)
+    Esperado: HTTP 409 WALLET_ALREADY_EXISTS
+    Obtido  : HTTP 409; status=None; erro/motivo=WALLET_ALREADY_EXISTS; saldo=None; replay=None
+
+[PASS] T08[1.001] - Valor invalido na criacao (1.001)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] T08[-5.00] - Valor invalido na criacao (-5.00)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] T08[1e3] - Valor invalido na criacao (1e3)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] T08[abc] - Valor invalido na criacao (abc)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] A1 - Aposta de 25,00
+    Esperado: HTTP 200 PROCESSED saldo 75.00 replay=False
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=75.00; replay=False
+
+[PASS] A2 - Mesmo pedido de novo (replay)
+    Esperado: HTTP 200; mesmo transactionId; saldo 75.00; replay=True
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=75.00; replay=True
+
+[PASS] A3 - Mesma chave com valor diferente
+    Esperado: HTTP 409 IDEMPOTENCY_CONFLICT
+    Obtido  : HTTP 409; status=None; erro/motivo=IDEMPOTENCY_CONFLICT; saldo=None; replay=None
+
+[PASS] A4 - Aposta maior que o saldo
+    Esperado: HTTP 422 REJECTED INSUFFICIENT_FUNDS saldo 75.00
+    Obtido  : HTTP 422; status=REJECTED; erro/motivo=INSUFFICIENT_FUNDS; saldo=75.00; replay=False
+
+[PASS] A5 - Ganho de 40,00
+    Esperado: HTTP 200 PROCESSED saldo 115.00
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=115.00; replay=False
+
+[PASS] A6 - LOSS nao mexe no saldo nem no ledger
+    Esperado: HTTP 200 PROCESSED saldo 115.00; 3 lancamentos; version 3
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=115.00; replay=False; 3 lancamentos; version 3
+
+[PASS] A7 - Devolver a aposta tx-1 (e replay)
+    Esperado: 1a: HTTP 200 saldo 140.00; 2a: replay=True saldo 140.00
+    Obtido  : 1a: HTTP 200; status=PROCESSED; erro/motivo=None; saldo=140.00; replay=False | 2a: HTTP 200; status=PROCESSED; erro/motivo=None; saldo=140.00; replay=True
+
+[PASS] A8 - Reverter de novo a mesma aposta
+    Esperado: HTTP 422 ALREADY_REVERSED saldo 140.00
+    Obtido  : HTTP 422; status=REJECTED; erro/motivo=ALREADY_REVERSED; saldo=140.00; replay=False
+
+[PASS] A9 - ROLLBACK do ganho tx-3 (vira debito)
+    Esperado: HTTP 200 PROCESSED saldo 100.00
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=100.00; replay=False
+
+[PASS] A10 - REFUND so pode referenciar BET
+    Esperado: HTTP 422 REFERENCE_KIND_INVALID
+    Obtido  : HTTP 422; status=REJECTED; erro/motivo=REFERENCE_KIND_INVALID; saldo=100.00; replay=False
+
+[PASS] A11 - Aposta de 10,00 e devolucao com valor errado
+    Esperado: aposta saldo 90.00; devolucao HTTP 422 AMOUNT_MISMATCH
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=90.00; replay=False | HTTP 422; status=REJECTED; erro/motivo=AMOUNT_MISMATCH; saldo=90.00; replay=False
+
+[PASS] A12 - Devolucao antes da aposta (fora de ordem)
+    Esperado: HTTP 202 PENDING_REFERENCE sem saldo
+    Obtido  : HTTP 202; status=PENDING_REFERENCE; erro/motivo=None; saldo=None; replay=False
+
+[PASS] A13 - A aposta original chega
+    Esperado: HTTP 200 PROCESSED saldo 80.00
+    Obtido  : HTTP 200; status=PROCESSED; erro/motivo=None; saldo=80.00; replay=False
+
+[PASS] A14 - Worker retoma a devolucao pendente
+    Esperado: tx-11 PROCESSED, kind REFUND, saldo 90.00 (ate 40s)
+    Obtido  : status=PROCESSED kind=REFUND saldo=90.00
+
+[PASS] A15 - Reconciliacao da wallet A
+    Esperado: consistent=True; 90.00 = 90.00; diferenca 0.00; 8 lancamentos; version 8
+    Obtido  : consistent=True; guardado=90.00; calculado=90.00; dif=0.00; lancamentos=8; version=8
+
+[PASS] A16 - Eventos do outbox da wallet A (22 no total, 0 pendentes)
+    Esperado: {'WagerTransactionPendingReference': 1, 'WagerTransactionProcessed': 9, 'WagerTransactionRejected': 4, 'WalletBalanceChanged': 8}; pendentes 0
+    Obtido  : {'WagerTransactionPendingReference': 1, 'WagerTransactionProcessed': 9, 'WagerTransactionRejected': 4, 'WalletBalanceChanged': 8}; pendentes 0
+
+[PASS] B1-B4 - Reversao que deixaria saldo negativo
+    Esperado: WIN 60.00; BET 5.00; ROLLBACK 422 REVERSAL_WOULD_OVERDRAW saldo 5.00; consistente, 3 lancamentos
+    Obtido  : 60.00 | 5.00 | HTTP 422; status=REJECTED; erro/motivo=REVERSAL_WOULD_OVERDRAW; saldo=5.00; replay=False | consistent=True guardado=5.00 lancamentos=3
+
+[PASS] B5a - Valor com 3 casas (1.001)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] B5b - Valor negativo (-5.00)
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] B5c - Tipo OPENING (interno) recusado
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] B5d - REFUND sem referencia
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] B5e - Sem o header Idempotency-Key
+    Esperado: HTTP 400 VALIDATION_ERROR
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] B6a - Moeda diferente da wallet
+    Esperado: HTTP 422 CURRENCY_MISMATCH
+    Obtido  : HTTP 422; status=REJECTED; erro/motivo=CURRENCY_MISMATCH; saldo=5.00; replay=False
+
+[PASS] B6b - Jogador que nao e dono da wallet
+    Esperado: HTTP 422 PLAYER_MISMATCH
+    Obtido  : HTTP 422; status=REJECTED; erro/motivo=PLAYER_MISMATCH; saldo=5.00; replay=False
+
+[PASS] B6c - Wallet inexistente
+    Esperado: HTTP 404 WALLET_NOT_FOUND
+    Obtido  : HTTP 404; status=None; erro/motivo=WALLET_NOT_FOUND; saldo=None; replay=None
+
+[PASS] B6d - Wallet B intacta depois dos erros
+    Esperado: saldo 5.00; 3 lancamentos; consistent=True
+    Obtido  : saldo 5.00; 3 lancamentos; consistent=True
+
+[PASS] C1a - Consultar transacao pelo id do provedor
+    Esperado: HTTP 200 PROCESSED BET saldo 75.00
+    Obtido  : HTTP 200 status=PROCESSED kind=BET saldo=75.00
+
+[PASS] C1b - Transacao inexistente
+    Esperado: HTTP 404 NOT_FOUND
+    Obtido  : HTTP 404; status=None; erro/motivo=NOT_FOUND; saldo=None; replay=None
+
+[PASS] C1c - Id de wallet que nao e UUID
+    Esperado: HTTP 400
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] C1d - Consultar transacao pelo id interno
+    Esperado: HTTP 200 PROCESSED
+    Obtido  : HTTP 200 status=PROCESSED
+
+[PASS] C2 - Extrato paginado (8 lancamentos, 3 por pagina)
+    Esperado: paginas de 3, 3 e 2 itens; 1o item CREDIT; ultimo cursor null
+    Obtido  : itens 3/3/2; 1o=CREDIT; cursor1=True; cursor3=None
+
+[PASS] C2b - Cursor invalido
+    Esperado: HTTP 400
+    Obtido  : HTTP 400; status=None; erro/motivo=VALIDATION_ERROR; saldo=None; replay=None
+
+[PASS] D1a - Ledger imutavel (UPDATE)
+    Esperado: ERROR ... append-only
+    Obtido  : ERROR:  wallet_ledger_entries is append-only
+CONTEXT:  PL/pgSQL function forbid_ledger_mutation() line 2 at RAISE
+
+[PASS] D1b - Ledger imutavel (DELETE)
+    Esperado: ERROR ... append-only
+    Obtido  : ERROR:  wallet_ledger_entries is append-only
+CONTEXT:  PL/pgSQL function forbid_ledger_mutation() line 2 at RAISE
+
+[PASS] D2 - Saldo negativo impossivel (CHECK)
+    Esperado: ERROR ... violates check constraint
+    Obtido  : ERROR:  new row for relation "wallets" violates check constraint "wallets_balance_check"
+DETAIL:  Failing row contains (01a1b740-5adb-7672-aab9-e55351f706b8, 01
+
+[PASS] D3 - Divergencia sinalizada e nunca corrigida sozinha
+    Esperado: consistent=False 91.00 x 90.00 dif 1.00; metrica sobe; depois de desfazer consistent=True
+    Obtido  : consistent=False 91.00 x 90.00 dif 1.00; metrica 1.0 -> 2.0; depois consistent=True
+
+[SKIP] D4 - Logs sem dados sensiveis
+    Obtido  : rode com --setup para o script ler o api.log; ou confira o terminal da API
+
+[PASS] S1 - Mensagem normal pela fila
+    Esperado: saldo 90.00; inbox processada (t)
+    Obtido  : envio=True; saldo 90.00; inbox=t
+
+[PASS] S2 - Mesma mensagem (mesmo messageId) de novo
+    Esperado: saldo 90.00; 1 linha na inbox; duplicatas sobem
+    Obtido  : saldo 90.00; inbox 1; duplicatas 0.0 -> 1.0
+
+[PASS] S3 - Mesma operacao com outro messageId
+    Esperado: saldo 90.00; 1 transacao com esse id externo
+    Obtido  : saldo 90.00; 1 transacao(oes)
+
+[PASS] S4 - Rejeicao de negocio pela fila (ack, nao DLQ)
+    Esperado: REJECTED INSUFFICIENT_FUNDS; saldo 90.00
+    Obtido  : status=REJECTED motivo=INSUFFICIENT_FUNDS saldo=90.00
+
+[PASS] S5-S7 - Erros permanentes vao para a DLQ
+    Esperado: DLQ +3 (conflito, lixo, wallet inexistente); saldo 90.00
+    Obtido  : DLQ 0.0 -> 3.0; saldo 90.00
+
+[PASS] K1 - Mesma aposta 50x em paralelo
+    Esperado: 50 respostas 200; 1 processamento real; saldo 90.00; 2 lancamentos
+    Obtido  : 50 x 200; 1 processamento(s) real(is); saldo 90.00; 2 lancamentos; consistent=True
+
+[PASS] K2 - Cenario obrigatorio: duas apostas de 80 disputando 100
+    Esperado: status [200, 422]; saldo 20.00; 2 lancamentos
+    Obtido  : status [200, 422]; saldo 20.00; 2 lancamentos; consistent=True
+
+[PASS] K3 - Mesma operacao 60x em 1 instancia(s)
+    Esperado: 60 respostas 200; saldo 99.00; consistent=True
+    Obtido  : 60 x 200; saldo 99.00; consistent=True
+
+[SKIP] K3-nota - Aviso
+    Esperado: ao menos 3 instancias
+    Obtido  : rodou com 1 instancia(s); use --bases para 3
+
+[PASS] K4 - Outbox totalmente publicado
+    Esperado: pendentes 0
+    Obtido  : pendentes 0
+
+[PASS] U1 - bun run typecheck
+    Esperado: sem erros de tipo
+    Obtido  : $ tsc --noEmit
+
+[FAIL] U2 - bun test src (unidade)
+    Esperado: 7 testes passando, 0 falhas
+    Obtido  : ? passando, 0 falhas
+
+[SKIP] F1 - Desligamento gracioso (SIGTERM)
+    Obtido  : exige --setup
+
+[SKIP] F4 - Reinicio com consistencia
+    Obtido  : exige --setup
+
+======================================================================
+RESUMO: 61 verificacoes | PASS 56 | FAIL 1 | SKIP 4
+
+FALHAS:
+  - U2: bun test src (unidade)
